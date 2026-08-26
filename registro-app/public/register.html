@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registro de usuario</title>
+<style>
+  :root {
+    --azul: #2563eb;
+    --azul-oscuro: #1d4ed8;
+    --gris: #6b7280;
+    --error: #dc2626;
+    --exito: #16a34a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: #f3f4f6;
+    margin: 0;
+    padding: 40px 16px;
+    display: flex;
+    justify-content: center;
+  }
+  .tarjeta {
+    background: #fff;
+    padding: 32px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    width: 100%;
+    max-width: 420px;
+  }
+  h1 {
+    font-size: 22px;
+    margin-bottom: 4px;
+    color: #111827;
+  }
+  p.subtitulo {
+    color: var(--gris);
+    margin-top: 0;
+    margin-bottom: 24px;
+    font-size: 14px;
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 6px;
+    margin-top: 16px;
+  }
+  input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+  input:focus {
+    outline: none;
+    border-color: var(--azul);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+  }
+  button {
+    width: 100%;
+    margin-top: 24px;
+    background: var(--azul);
+    color: #fff;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover { background: var(--azul-oscuro); }
+  button:disabled { background: #9ca3af; cursor: not-allowed; }
+  #mensaje {
+    margin-top: 16px;
+    font-size: 14px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    display: none;
+  }
+  #mensaje.error { display: block; background: #fef2f2; color: var(--error); }
+  #mensaje.exito { display: block; background: #f0fdf4; color: var(--exito); }
+  .campo-error {
+    color: var(--error);
+    font-size: 12px;
+    margin-top: 4px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+  <div class="tarjeta">
+    <h1>Crear cuenta</h1>
+    <p class="subtitulo">Completa tus datos. Te enviaremos un correo para verificar tu cuenta.</p>
+
+    <form id="formRegistro" novalidate>
+      <label for="nombre">Nombre</label>
+      <input type="text" id="nombre" name="nombre" required minlength="2">
+      <span class="campo-error" id="err-nombre"></span>
+
+      <label for="apellidos">Apellidos</label>
+      <input type="text" id="apellidos" name="apellidos" required minlength="2">
+      <span class="campo-error" id="err-apellidos"></span>
+
+      <label for="correo">Correo electrónico</label>
+      <input type="email" id="correo" name="correo" required>
+      <span class="campo-error" id="err-correo"></span>
+
+      <label for="edad">Edad</label>
+      <input type="number" id="edad" name="edad" required min="1" max="120">
+      <span class="campo-error" id="err-edad"></span>
+
+      <label for="password">Contraseña</label>
+      <input type="password" id="password" name="password" required minlength="8">
+      <span class="campo-error" id="err-password"></span>
+
+      <button type="submit" id="btnEnviar">Registrarme</button>
+    </form>
+
+    <div id="mensaje"></div>
+  </div>
+
+<script>
+const form = document.getElementById('formRegistro');
+const mensaje = document.getElementById('mensaje');
+const btn = document.getElementById('btnEnviar');
+
+function limpiarErrores() {
+  document.querySelectorAll('.campo-error').forEach(el => { el.style.display = 'none'; el.textContent = ''; });
+  mensaje.style.display = 'none';
+}
+
+function mostrarErrorCampo(campo, texto) {
+  const el = document.getElementById('err-' + campo);
+  if (el) { el.textContent = texto; el.style.display = 'block'; }
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  limpiarErrores();
+
+  const datos = {
+    nombre: document.getElementById('nombre').value.trim(),
+    apellidos: document.getElementById('apellidos').value.trim(),
+    correo: document.getElementById('correo').value.trim(),
+    edad: document.getElementById('edad').value,
+    password: document.getElementById('password').value,
+  };
+
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  try {
+    const res = await fetch('/api/registro', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(datos),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      if (data.errores) {
+        Object.entries(data.errores).forEach(([campo, texto]) => mostrarErrorCampo(campo, texto));
+      }
+      mensaje.className = 'error';
+      mensaje.textContent = data.mensaje || 'No se pudo completar el registro.';
+      mensaje.style.display = 'block';
+      return;
+    }
+
+    mensaje.className = 'exito';
+    mensaje.textContent = data.mensaje || 'Registro exitoso. Revisa tu correo para verificar tu cuenta.';
+    mensaje.style.display = 'block';
+    form.reset();
+  } catch (err) {
+    mensaje.className = 'error';
+    mensaje.textContent = 'Error de red. Intenta de nuevo.';
+    mensaje.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Registrarme';
+  }
+});
+</script>
+</body>
+</html>
